@@ -1,0 +1,21 @@
+services:
+  onelib-unstructured:
+    container_name: onelib-unstructured
+    image: horacejett/onelib-unstructured:v0.0.3.14
+    ports:
+      - "10001:10001"
+    environment:
+      # 填写ocr_sdk或rt服务的根地址
+      # server_address: onelib-rt:9001
+      # 这里填 ocr_sdk 或 rt
+      # server_type: ocr_sdk
+      TZ: Asia/Shanghai
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/onelib-uns/config.yaml:/opt/onelib-unstructured/onelib_unstructured/config/config.yaml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10001/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: on-failure
+
