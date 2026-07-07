@@ -1,6 +1,9 @@
 import { createContext, ReactNode, useEffect, useState } from "react";
 import { getAppConfig, getWorkstationConfigApi } from "../controllers/API";
 
+// Temporarily hide GitHub/help documentation entry points. Flip to false to restore them.
+const FORCE_HIDE_GITHUB_AND_HELP = true;
+
 //types for location context
 type locationContextType = {
   current: Array<string>;
@@ -82,7 +85,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           websocketHost: res.websocket_url,
           isPro: !!res.pro,
           chatPrompt: !!res.application_usage_tips,
-          noFace: !res.show_github_and_help,
+          noFace: FORCE_HIDE_GITHUB_AND_HELP || !res.show_github_and_help,
           register: !!res.enable_registration,
           uploadFileMaxSize: res.uploaded_files_maximum_size || 200,
           enableEtl4lm: res.enable_etl4lm

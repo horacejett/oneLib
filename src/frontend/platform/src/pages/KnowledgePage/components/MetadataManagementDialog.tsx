@@ -28,6 +28,12 @@ interface BuiltInMetadata {
 
 }
 
+interface MetadataFieldInput {
+    field_name?: string
+    field_type?: string
+    updated_at?: number | string
+}
+
 const BUILT_IN_METADATA: BuiltInMetadata[] = [
     { name: "document_id", type: "Number" },
     { name: "document_name", type: "String" },
@@ -47,6 +53,28 @@ const TYPE_ICONS = {
     String: <Type />,
     Number: <Hash />,
     Time: <Clock3 />,
+}
+
+const normalizeMetadataType = (fieldType?: string): MetadataType => {
+    const normalizedType = String(fieldType || "string").toLowerCase();
+    if (normalizedType === "number") return "Number";
+    if (normalizedType === "time") return "Time";
+    return "String";
+}
+
+const normalizeMetadataDate = (value?: number | string): Date => {
+    if (value === undefined || value === null || value === "") return new Date();
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return new Date(value > 10_000_000_000 ? value : value * 1000);
+    }
+
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue)) {
+        return new Date(numericValue > 10_000_000_000 ? numericValue : numericValue * 1000);
+    }
+
+    const parsedDate = new Date(value);
+    return Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 }
 
 const TypeSelector = memo(({
@@ -89,7 +117,7 @@ interface MetadataManagementDialogProps {
     onSave?: (metadata: Metadata[]) => void;
     hasManagePermission?: boolean;
     id: string;
-    initialMetadata?: Array<{ field_name: string; field_type: string; updated_at?: number }>;
+    initialMetadata?: MetadataFieldInput[];
 }
 
 export function MetadataManagementDialog({
@@ -123,13 +151,15 @@ export function MetadataManagementDialog({
 
     useEffect(() => {
         if (open && initialMetadata && initialMetadata.length > 0) {
-            const formattedMetadata = initialMetadata.map((item) => ({
-                id: `meta_${item.field_name}`,
-                name: item.field_name,
-                type: (item.field_type.charAt(0).toUpperCase() + item.field_type.slice(1)) as MetadataType,
-                createdAt: new Date(),
-                updatedAt: item.updated_at ? new Date(item.updated_at * 1000) : new Date(),
-            }));
+            const formattedMetadata = initialMetadata
+                .filter((item) => item?.field_name)
+                .map((item) => ({
+                    id: `meta_${item.field_name}`,
+                    name: item.field_name || "",
+                    type: normalizeMetadataType(item.field_type),
+                    createdAt: new Date(),
+                    updatedAt: normalizeMetadataDate(item.updated_at),
+                }));
             setMetadataList(formattedMetadata);
         } else if (open) {
             setMetadataList([]);
@@ -281,7 +311,11 @@ export function MetadataManagementDialog({
         }
     }, [id, metadataList, onSave, t]);
 
-    const sortedMetadata = [...metadataList].sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
+    const sortedMetadata = [...metadataList].sort((a, b) => {
+        const updatedA = a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
+        const updatedB = b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
+        return updatedA - updatedB;
+    });
 
     const BubbleConfirm = ({
         trigger,
@@ -418,7 +452,7 @@ export function MetadataManagementDialog({
                                     className={cname("flex items-center justify-between rounded-lg bg-muted hover:bg-accent transition-colors", isSmallScreen ? "p-2 gap-2" : "p-3 gap-3")}
                                 >
                                     <div className="flex items-center gap-2 flex-1">
-                                        <span className={isSmallScreen ? "text-base" : "text-lg"}>{TYPE_ICONS[metadata.type]}</span>
+                                        <span className={isSmallScreen ? "text-base" : "text-lg"}>{TYPE_ICONS[metadata.type] || TYPE_ICONS.String}</span>
                                         <span className={cname("text-gray-500", isSmallScreen ? "text-xs" : "text-sm")}>{metadata.type}</span>
                                         <div className=" min-w-0 max-w-64">
                                             <TooltipProvider>
@@ -486,7 +520,7 @@ export function MetadataManagementDialog({
                                         key={metadata.name}
                                         className={cname("flex items-center bg-muted rounded-lg", isSmallScreen ? "p-2 gap-2" : "p-3 gap-3")}
                                     >
-                                        <span className={isSmallScreen ? "text-base" : "text-lg"}>{TYPE_ICONS[metadata.type]}</span>
+                                        <span className={isSmallScreen ? "text-base" : "text-lg"}>{TYPE_ICONS[metadata.type] || TYPE_ICONS.String}</span>
                                         <span className={cname("text-gray-500", isSmallScreen ? "text-xs" : "text-sm")}>{metadata.type}</span>
                                         <span className={cname("font-medium truncate", isSmallScreen ? "text-sm" : "")}>{metadata.name}</span>
                                     </div>

@@ -23,6 +23,56 @@ import PreviewParagraph from './PreviewParagraph';
 // Import metadata components
 import { MainMetadataDialog, MetadataSideDialog } from './MetadataDialog';
 
+type MetadataType = 'String' | 'Number' | 'Time';
+
+const normalizeMetadataType = (fieldType?: string): MetadataType => {
+    const normalizedType = String(fieldType || 'string').toLowerCase();
+    if (normalizedType === 'number') return 'Number';
+    if (normalizedType === 'time') return 'Time';
+    return 'String';
+};
+
+const normalizeMetadataTimestamp = (value?: number | string): number => {
+    if (value === undefined || value === null || value === '') return 0;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value > 10_000_000_000 ? Math.floor(value / 1000) : value;
+    }
+
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue)) {
+        return numericValue > 10_000_000_000 ? Math.floor(numericValue / 1000) : numericValue;
+    }
+
+    const parsedDate = new Date(String(value).replace(' ', 'T'));
+    return Number.isNaN(parsedDate.getTime()) ? 0 : Math.floor(parsedDate.getTime() / 1000);
+};
+
+const normalizeMetadataEntries = (metadataFields) => {
+    if (Array.isArray(metadataFields)) {
+        return metadataFields.map((field, index) => [field?.field_name || String(index), field]);
+    }
+    if (metadataFields && typeof metadataFields === 'object') {
+        return Object.entries(metadataFields);
+    }
+    return [];
+};
+
+const formatKnowledgeMetadataFields = (metadataFields) => {
+    return normalizeMetadataEntries(metadataFields)
+        .map(([fieldName, fieldData]) => {
+            const field = fieldData && typeof fieldData === 'object' ? fieldData : {};
+            const name = field.field_name || fieldName;
+            if (!name) return null;
+            return {
+                id: `meta_${name}`,
+                name,
+                type: normalizeMetadataType(field.field_type),
+                updated: normalizeMetadataTimestamp(field.updated_at)
+            };
+        })
+        .filter(Boolean);
+};
+
 export default function Paragraphs({ fileId, onBack }) {
     console.log('Props fileId:', fileId);
 
@@ -425,13 +475,7 @@ export default function Paragraphs({ fileId, onBack }) {
             const knowledgeDetail = knowledgeDetails[0];
 
             if (knowledgeDetail && knowledgeDetail.metadata_fields) {
-                const formattedFields = Object.entries(knowledgeDetail.metadata_fields).map(([fieldName, fieldData]) => ({
-                    id: `meta_${fieldName}`,
-                    name: fieldData.field_name || fieldName,
-                    type: fieldData.field_type.charAt(0).toUpperCase() + fieldData.field_type.slice(1),
-                    updated: fieldData.updated_at
-                }));
-                setPredefinedMetadata(formattedFields);
+                setPredefinedMetadata(formatKnowledgeMetadataFields(knowledgeDetail.metadata_fields));
             }
             setNewMetadata({ name: '', type: 'String' });
             setMetadataError('');
@@ -450,13 +494,7 @@ export default function Paragraphs({ fileId, onBack }) {
             const knowledgeDetail = knowledgeDetails[0];
 
             if (knowledgeDetail && knowledgeDetail.metadata_fields) {
-                const formattedFields = Object.entries(knowledgeDetail.metadata_fields).map(([fieldName, fieldData]) => ({
-                    id: `meta_${fieldName}`,
-                    name: fieldData.field_name || fieldName,
-                    type: fieldData.field_type.charAt(0).toUpperCase() + fieldData.field_type.slice(1),
-                    updated: fieldData.updated_at
-                }));
-                setPredefinedMetadata(formattedFields);
+                setPredefinedMetadata(formatKnowledgeMetadataFields(knowledgeDetail.metadata_fields));
             } else {
                 setPredefinedMetadata([]);
             }
@@ -491,7 +529,7 @@ export default function Paragraphs({ fileId, onBack }) {
         const newItem = {
             ...metadata,
             id: `temp_meta_${Date.now()}_${metadata.name}`,
-            updated_at: Date.now(),
+            updated_at: Math.floor(Date.now() / 1000),
             value: ''
         };
         setMainMetadataList(prev => [...prev, newItem]);
@@ -504,18 +542,20 @@ export default function Paragraphs({ fileId, onBack }) {
                 const res = await getMetaFile(currentFile.id);
                 setFileInfor(res);
                 const fetchedMetadata = res.user_metadata || [];
-                const metadataArray = Object.entries(fetchedMetadata).map(([fieldName, fieldData]) => ({
-                    id: `meta_${fieldName}`,
-                    name: fieldData.field_name || fieldName,
-                    type: fieldData.field_type ?
-                        fieldData.field_type.charAt(0).toUpperCase() + fieldData.field_type.slice(1).toLowerCase() :
-                        'String',
-                    value: fieldData.field_value || '',
-                    originalValue: fieldData.field_value || '',
-                    updated_at: fieldData.updated_at || 0,
-                }));
+                const metadataArray = normalizeMetadataEntries(fetchedMetadata).map(([fieldName, fieldData]) => {
+                    const field = fieldData && typeof fieldData === 'object' ? fieldData : {};
+                    const name = field.field_name || fieldName;
+                    return {
+                        id: `meta_${name}`,
+                        name,
+                        type: normalizeMetadataType(field.field_type),
+                        value: field.field_value || '',
+                        originalValue: field.field_value || '',
+                        updated_at: normalizeMetadataTimestamp(field.updated_at),
+                    };
+                }).filter((item) => item.name);
                 const sortedMetadata = metadataArray.sort((a, b) => {
-                    return (a.updated_at || 0) - (b.updated_at || 0);
+                    return normalizeMetadataTimestamp(a.updated_at) - normalizeMetadataTimestamp(b.updated_at);
                 });
 
                 setMainMetadataList(sortedMetadata);
@@ -765,13 +805,13 @@ export default function Paragraphs({ fileId, onBack }) {
                 return {
                     field_name: item.name,
                     field_value: item.value || '',
-                    updated_at: item.updated_at,
+                    updated_at: normalizeMetadataTimestamp(item.updated_at),
                 };
             }
             return {
                 field_name: item.name,
                 field_value: item.value || '',
-                updated_at: item.updated_at || Math.floor(Date.now() / 1000),
+                updated_at: normalizeMetadataTimestamp(item.updated_at) || Math.floor(Date.now() / 1000),
             };
         });
         try {

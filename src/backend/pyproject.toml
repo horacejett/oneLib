@@ -24,8 +24,6 @@ dependencies = [
     "e2b-code-interpreter==1.5.2",
     "emoji>=2.15.0",
     "fastapi>=0.120.4",
-    "ibm-db>=3.2.7",
-    "ibm-db-sa>=0.4.2",
     "jieba>=0.42.1",
     "langchain>=0.3.23,<0.4.0",
     "langchain-anthropic>=0.3.10,<0.4.0",
@@ -66,6 +64,7 @@ dependencies = [
     "qdrant-client>=1.15.1",
     "rapidfuzz>=3.14.3",
     "redis>=7.0.1",
+    "rsa>=4.9.1",
     "scipy>=1.15.3",
     "shapely>=2.1.2",
     "sqlmodel>=0.0.27",
@@ -84,3 +83,13 @@ dependencies = [
     "json-repair>=0.55.0",
     "arxiv>=2.4.0"
 ]
+
+[project.optional-dependencies]
+db2 = [
+    "ibm-db>=3.2.7",
+    "ibm-db-sa>=0.4.2",
+]
+
+[tool.uv.sources]
+onelib-pyautogen = { path = "vendor/wheels/onelib_pyautogen-0.3.2-py3-none-any.whl" }
+onelib-ragas = { path = "vendor/wheels/onelib_ragas-1.0.3-py3-none-any.whl" }

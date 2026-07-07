@@ -237,7 +237,7 @@ export default function MainLayout() {
             <div className="w-10/12 bg-gray-50 mx-auto mt-[30%] rounded-xl px-4 py-10">
                 <p className=" text-sm text-center">{t('menu.forBestExperience')}</p>
                 {
-                    !appConfig.isPro && <div className="flex mt-8 justify-center gap-4">
+                    !appConfig.noFace && !appConfig.isPro && <div className="flex mt-8 justify-center gap-4">
                         <a href={"https://github.com/horacejett/oneLib"} target="_blank">
                             <GithubIcon className="side-bar-button-size mx-auto" />Github
                         </a>

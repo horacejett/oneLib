@@ -153,9 +153,9 @@ class ScheduleCenterProcess(Process):
         while True:
             await self.semaphore.acquire()  # Acquire semaphore, limit concurrency
             try:
-                session_version_id = await self.queue.get_wait()
+                # Use a finite timeout so an empty queue does not trip the Redis socket timeout.
+                session_version_id = await self.queue.get_wait(timeout=2)
                 if session_version_id is None:
-                    logger.info("No session_version_id found in queue, waiting...")
                     self.semaphore.release()
                     continue
 

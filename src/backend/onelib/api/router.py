@@ -14,8 +14,8 @@ from onelib.knowledge.api.router import qa_router, knowledge_router
 from onelib.llm.api.router import router as llm_router
 from onelib.open_endpoints.api.endpoints.llm import router as llm_router_rpc
 from onelib.open_endpoints.api.router import (assistant_router_rpc, chat_router_rpc, flow_router,
-                                               knowledge_router_rpc, workflow_router_rpc,
-                                               filelib_router_rpc)
+                                               knowledge_router_rpc, knowledge_search_router_rpc,
+                                               workflow_router_rpc, filelib_router_rpc)
 from onelib.share_link.api.router import router as share_link_router
 from onelib.linsight.api.router import router as linsight_router
 from onelib.telemetry_search.api.router import router as telemetry_search_router
@@ -52,6 +52,7 @@ router.include_router(telemetry_search_router)
 
 router_rpc = APIRouter(prefix='/api/v2', )
 router_rpc.include_router(knowledge_router_rpc)
+router_rpc.include_router(knowledge_search_router_rpc)
 router_rpc.include_router(filelib_router_rpc)
 router_rpc.include_router(chat_router_rpc)
 router_rpc.include_router(flow_router)

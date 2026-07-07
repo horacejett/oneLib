@@ -90,7 +90,7 @@ export const MetadataRow = React.memo(({
         <div className="flex items-center gap-3 p-2 w-full">
             <div className="flex items-center gap-2 flex-1 p-2 rounded-lg bg-gray-50 h-11 min-w-[180px]">
                 <span className={isSmallScreen ? "text-base" : "text-lg"}>
-                    {TYPE_ICONS[item.type]}
+                    {TYPE_ICONS[item.type] || TYPE_ICONS.String}
                 </span>
                 <span className={cname(
                     "text-gray-500 min-w-[60px]",
@@ -501,7 +501,7 @@ export const MetadataSideDialog = React.memo(({
                                         >
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                                 <span className={isSmallScreen ? "text-base" : "text-lg"}>
-                                                    {TYPE_ICONS[metadata.type]}
+                                                    {TYPE_ICONS[metadata.type] || TYPE_ICONS.String}
                                                 </span>
                                                 <span className={cname(
                                                     "text-gray-500 min-w-[60px]",

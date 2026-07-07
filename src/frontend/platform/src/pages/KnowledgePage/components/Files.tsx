@@ -32,6 +32,50 @@ interface StatusIndicatorProps {
     status: number;
     remark?: string;
 }
+
+const parseSplitRule = (splitRule?: string) => {
+    if (!splitRule) return {};
+    try {
+        const parsedRule = JSON.parse(splitRule);
+        return parsedRule && typeof parsedRule === 'object' ? parsedRule : {};
+    } catch (error) {
+        console.warn('Failed to parse split rule:', error);
+        return {};
+    }
+};
+
+const getFileSuffix = (fileName?: string) => {
+    return (fileName || '').split('.').pop()?.toUpperCase() || '';
+};
+
+const getFileStrategy = (file, t) => {
+    const fileName = file?.file_name || '';
+    const suffix = getFileSuffix(fileName);
+    const rule = parseSplitRule(file?.split_rule);
+    const isExcelFile = ['XLSX', 'XLS', 'CSV'].includes(suffix);
+
+    if (isExcelFile && file?.parse_type !== "local" && file?.parse_type !== "uns") {
+        const sliceLength = rule?.excel_rule?.slice_length;
+        return ['', sliceLength ? t('everyRowsAsOneSegment', { count: sliceLength }) : ''];
+    }
+
+    const separators = Array.isArray(rule?.separator) ? rule.separator : [];
+    const separatorRules = Array.isArray(rule?.separator_rule) ? rule.separator_rule : [];
+    if (separators.length === 0) return ['', ''];
+
+    const data = separators.map((separator, index) => {
+        const separatorRule = separatorRules[index] || '';
+        return `${separatorRule === 'before' ? '✂️' : ''}${separator}${separatorRule === 'after' ? '✂️' : ''}`;
+    });
+
+    return [data.length > 2 ? data.slice(0, 2).join(',') : '', data.join(',')];
+};
+
+const formatStrategyText = (strategy) => {
+    const text = Array.isArray(strategy) ? strategy[1] || '' : '';
+    return text.replace(/\n/g, '\\n');
+};
+
 // 1. 定义状态配置映射表
 const STATUS_CONFIG: Record<number, { labelKey: string; colorClass: string; bgClass: string }> = {
     1: { labelKey: "parsing", colorClass: "text-[#4D9BF0]", bgClass: "bg-[#4D9BF0]" },
@@ -250,33 +294,21 @@ export default function Files({ onPreview }) {
     // Strategy parsing
     const dataSouce = useMemo(() => {
         return datalist.map(el => {
-            if (el.file_name.includes('xlsx', 'xls', 'csv') && el.parse_type !== "local" && el.parse_type !== "uns") {
-                const excel_rule = JSON.parse(el.split_rule).excel_rule
-                return {
-                    ...el,
-                    strategy: ['', t('everyRowsAsOneSegment', { count: excel_rule?.slice_length })]
-                }
-            }
-            if (!el.split_rule) return {
-                ...el,
-                strategy: ['', '']
-            }
-            const rule = JSON.parse(el.split_rule)
-            const { separator, separator_rule } = rule
-            const data = separator.map((el, i) => `${separator_rule[i] === 'before' ? '✂️' : ''}${el}${separator_rule[i] === 'after' ? '✂️' : ''}`)
             return {
                 ...el,
-                strategy: [data.length > 2 ? data.slice(0, 2).join(',') : '', data.join(',')]
+                strategy: getFileStrategy(el, t)
             }
         })
     }, [datalist, t])
 
     const splitRuleDesc = (el) => {
-        if (!el.split_rule) return el.strategy[1].replace(/\n/g, '\\n')
-        const suffix = el.file_name.split('.').pop().toUpperCase()
-        const excel_rule = JSON.parse(el.split_rule).excel_rule
-        if (!excel_rule) return el.strategy[1].replace(/\n/g, '\\n')
-        return ['XLSX', 'XLS', 'CSV'].includes(suffix) ? t('everyRowsAsOneSegment', { count: excel_rule.slice_length }) : el.strategy[1].replace(/\n/g, '\\n')
+        const rule = parseSplitRule(el?.split_rule);
+        const suffix = getFileSuffix(el?.file_name);
+        const excelRule = rule?.excel_rule;
+        if (excelRule && ['XLSX', 'XLS', 'CSV'].includes(suffix)) {
+            return t('everyRowsAsOneSegment', { count: excelRule.slice_length });
+        }
+        return formatStrategyText(el?.strategy);
     }
 
     // Check if there are selected parsing failed files
@@ -545,29 +577,29 @@ export default function Files({ onPreview }) {
                                     />
                                 </TableCell>
                                 <TableCell className="min-w-[250px]">
-                                    <Tip content={el.file_name} align="start" >
+                                    <Tip content={el.file_name || ''} align="start" >
                                         <div className="flex items-center gap-2">
                                             <FileIcon
-                                                type={el.file_name.split('.').pop().toLowerCase() || 'txt'}
+                                                type={(el.file_name || '').split('.').pop()?.toLowerCase() || 'txt'}
                                                 className="size-[30px] min-w-[30px]"
                                             />
-                                            {truncateString(el.file_name, 35)}
+                                            {truncateString(el.file_name || '', 35)}
                                         </div>
                                     </Tip>
                                 </TableCell>
                                 <TableCell>
-                                    {el.strategy[0] ? (
+                                    {Array.isArray(el.strategy) && el.strategy[0] ? (
                                         <TooltipProvider delayDuration={100}>
                                             <Tooltip>
-                                                <TooltipTrigger className="truncate max-w-[106px]">{el.strategy[1].replace(/\n/g, '\\n')}</TooltipTrigger>
+                                                <TooltipTrigger className="truncate max-w-[106px]">{formatStrategyText(el.strategy)}</TooltipTrigger>
                                                 <TooltipContent>
-                                                    <div className="max-w-96 text-left break-all whitespace-normal">{el.strategy[1].replace(/\n/g, '\\n')}</div>
+                                                    <div className="max-w-96 text-left break-all whitespace-normal">{formatStrategyText(el.strategy)}</div>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
                                     ) : splitRuleDesc(el)}
                                 </TableCell>
-                                <TableCell>{el.update_time.replace('T', ' ')}</TableCell>
+                                <TableCell>{el.update_time ? el.update_time.replace('T', ' ') : ''}</TableCell>
 
                                 <TableCell>
                                     <StatusIndicator status={el.status} remark={el.remark} />

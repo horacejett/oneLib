@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from fastapi import (APIRouter, BackgroundTasks, Body, File, Form, HTTPException, Query, Request,
                      UploadFile)
@@ -55,12 +55,14 @@ async def get_knowledge(*,
                         knowledge_type: int = Query(default=KnowledgeTypeEnum.NORMAL.value,
                                                     alias='type'),
                         name: str = None,
+                        sort_by: Literal['create_time', 'update_time', 'name'] = Query(default='update_time'),
                         page_size: Optional[int] = 10,
                         page_num: Optional[int] = 1):
     """ Read all knowledge base information. """
     knowledge_type = KnowledgeTypeEnum(knowledge_type)
     login_user = get_default_operator()
     res, total = await KnowledgeService.get_knowledge(request, login_user, knowledge_type, name,
+                                                      sort_by,
                                                       page_num, page_size)
     return resp_200(data={'data': res, 'total': total})
 

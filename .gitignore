@@ -139,6 +139,9 @@ lib64/
 sdist/
 var/
 wheels/
+!/src/backend/vendor/
+!/src/backend/vendor/wheels/
+!/src/backend/vendor/wheels/*.whl
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
@@ -238,6 +241,11 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+# Generated source packages. Keep the build scripts/docs in output, but do not
+# commit large tarballs that can exceed GitHub's single-file limit.
+/output/*.tar.gz
+/output/*.tgz
 
 # mypy
 .mypy_cache/
